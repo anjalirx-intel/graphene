@@ -40,7 +40,6 @@ c_executables = \
 	getdents \
 	getsockname \
 	getsockopt \
-	gettimeofday \
 	groups \
 	helloworld \
 	host_root_fs \
@@ -150,7 +149,6 @@ CFLAGS-spinlock += -I$(PALDIR)/../include/lib -I$(PALDIR)/../include/arch/$(ARCH
 CFLAGS-sigaction_per_process += -pthread
 CFLAGS-signal_multithread += -pthread
 CFLAGS-pthread_set_get_affinity += -pthread
-CFLAGS-gettimeofday += -pthread
 
 CFLAGS-attestation += -I$(PALDIR)/../lib/crypto/mbedtls/crypto/include \
                       -I$(PALDIR)/host/Linux-SGX \

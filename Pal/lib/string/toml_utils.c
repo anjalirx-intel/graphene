@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: LGPL-3.0-or-later */
-/* Copyright (C) 2021 Intel Corporation
+/* Copyright (C) 2020 Intel Corporation
  *                    Dmitrii Kuvaiskii <dmitrii.kuvaiskii@intel.com>
- *                    Michał Kowalczyk <mkow@invisiblethingslab.com>
  */
 
 #include <stdint.h>
@@ -9,57 +8,42 @@
 #include "api.h"
 #include "toml.h"
 
-/* returns a pointer to next occurrence of `ch` in `s`, or null byte ending the string if it wasn't
- * found */
-static char* find_next_char(char* s, char ch) {
-    while (*s && *s != ch)
+/* returns a pointer to next '.' in `s` or null byte ending the string if no '.' was found */
+static char* find_next_dot(char* s) {
+    while (*s && *s != '.')
         s++;
     return s;
 }
 
-/* Searches for a dotted-key (e.g. "fs.mount.lib1.type") from `root`; returns NULL if value for
- * such key is not found. Double quotes are respected, same as in TOML. */
+/* searches for a dotted-key (e.g. "fs.mount.lib1.type") from `root`; returns NULL if value for
+ * such key is not found */
 static toml_raw_t toml_raw_in_dottedkey(const toml_table_t* root, const char* _key) {
     char* key = strdup(_key);
     if (!key)
         return NULL;
 
-    toml_raw_t res = NULL;
+    toml_raw_t raw = NULL;
 
     assert(root);
     const toml_table_t* cur_table = root;
 
-    char* subkey = key;
-    while (*subkey) {
-        char* subkey_end;
-        if (*subkey == '"') {
-            // quoted subkey
-            subkey++;
-            subkey_end = find_next_char(subkey, '"');
-            if (subkey_end[0] != '"'  || (subkey_end[1] != '.' && subkey_end[1] != '\0'))
-                goto out; // incorrectly terminated '"'
-            *subkey_end = '\0';
-            subkey_end++; // points to '.' or '\0' now
-        } else {
-            // unquoted subkey
-            subkey_end = find_next_char(subkey, '.');
-        }
-        if (!*subkey_end) {
-            // this is the last subkey, jump out and parse it using `toml_raw_in`
-            break;
-        }
-        // there will be more subkeys afterwards
+    char* subkey     = key;
+    char* subkey_end = find_next_dot(subkey);
+    while (*subkey_end == '.') {
         *subkey_end = '\0';
         cur_table = toml_table_in(cur_table, subkey);
         if (!cur_table)
             goto out;
-        subkey = subkey_end + 1;
-    }
 
-    res = toml_raw_in(cur_table, subkey);
+        subkey = subkey_end + 1;
+        subkey_end = find_next_dot(subkey);
+    }
+    assert(*subkey_end == '\0');
+
+    raw = toml_raw_in(cur_table, subkey);
 out:
     free(key);
-    return res;
+    return raw;
 }
 
 int toml_int_in(const toml_table_t* root, const char* key, int64_t defaultval, int64_t* retval) {
